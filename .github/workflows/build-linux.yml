@@ -26,6 +26,9 @@ jobs:
           VERSION="${{ github.event.inputs.version }}"
           mkdir -p dist
           
+          # Tidy dependencies first
+          go mod tidy
+          
           # Build static binary - no GLIBC dependency!
           # Uses go-ora pure Go Oracle driver, no CGO required
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
