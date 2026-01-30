@@ -1,0 +1,50 @@
+name: Build Linux Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., 0.6.0)'
+        required: false
+        default: '0.6.0'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: Build static Linux binary (amd64)
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          mkdir -p dist
+          
+          # Build static binary - no GLIBC dependency!
+          # Uses go-ora pure Go Oracle driver, no CGO required
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+            -ldflags "-X main.Version=${VERSION} -s -w" \
+            -o dist/oracledb_exporter
+          
+          # Include default metrics file
+          cp default-metrics.toml dist/
+          
+          # Create tarball
+          cd dist && tar -czvf oracledb_exporter_${VERSION}_linux_amd64.tar.gz \
+            oracledb_exporter default-metrics.toml
+          
+          echo "Build complete!"
+          ls -la
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: oracledb_exporter_linux_amd64
+          path: dist/oracledb_exporter_*.tar.gz
+          retention-days: 30
